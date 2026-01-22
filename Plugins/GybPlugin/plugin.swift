@@ -18,15 +18,21 @@ import PackagePlugin
 struct GybBuildPlugin: BuildToolPlugin {
   
   func createBuildCommands(context: PluginContext, target: Target) async throws -> [Command] {
-    guard let target = target as? SwiftSourceModuleTarget else {
-      return []
-    }
     let toolPath = try context.tool(named: "gyb").path
-    let gyb: (_ src: Path, _ dst: Path) throws -> Command = {
+    
+    // Get compilation conditions if this is a Swift target
+    let compilationConditions: [String]
+    if let swiftTarget = target as? SwiftSourceModuleTarget {
+      compilationConditions = swiftTarget.compilationConditions
+    } else {
+      compilationConditions = []
+    }
+    
+    let gyb: (_ src: Path, _ dst: Path) -> Command = {
       .buildCommand(
         displayName: "Using gyb convert \($0.lastComponent) to \($1.lastComponent)",
         executable: toolPath,
-        arguments: target.compilationConditions.flatMap { ["-D", "\($0)=1"] } + [
+        arguments: compilationConditions.flatMap { ["-D", "\($0)=1"] } + [
           "--line-directive", #"#sourceLocation(file: "%(file)s", line: %(line)d)"#,
           "-o", $1,
           $0,
@@ -34,11 +40,22 @@ struct GybBuildPlugin: BuildToolPlugin {
         inputFiles: [$0],
         outputFiles: [$1])
     }
+    
     let outputPath: (Path) -> (Path) = {
       // Strip .gyb extension, keeping the underlying extension (e.g., .swift, .metal)
       context.pluginWorkDirectory.appending($0.stem)
     }
-    let gybFiles = target.sourceFiles(withSuffix: ".gyb")
-    return try gybFiles.map { ($0.path, outputPath($0.path)) }.map(gyb)
+    
+    // Handle both Swift and Clang targets
+    let gybFiles: [File]
+    if let swiftTarget = target as? SwiftSourceModuleTarget {
+      gybFiles = Array(swiftTarget.sourceFiles(withSuffix: ".gyb"))
+    } else if let clangTarget = target as? ClangSourceModuleTarget {
+      gybFiles = clangTarget.sourceFiles.filter { $0.path.extension == "gyb" }
+    } else {
+      return []
+    }
+    
+    return gybFiles.map { ($0.path, outputPath($0.path)) }.map(gyb)
   }
 }
