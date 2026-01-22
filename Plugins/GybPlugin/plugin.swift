@@ -51,6 +51,8 @@ struct GybBuildPlugin: BuildToolPlugin {
     if let swiftTarget = target as? SwiftSourceModuleTarget {
       gybFiles = Array(swiftTarget.sourceFiles(withSuffix: ".gyb"))
     } else if let clangTarget = target as? ClangSourceModuleTarget {
+      // Debug: list all source files
+      Diagnostics.remark("ClangTarget \(target.name) sourceFiles: \(clangTarget.sourceFiles.map { $0.path.string })")
       gybFiles = clangTarget.sourceFiles.filter { $0.path.extension == "gyb" }
     } else {
       return []
