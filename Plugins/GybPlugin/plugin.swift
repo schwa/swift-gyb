@@ -34,10 +34,11 @@ struct GybBuildPlugin: BuildToolPlugin {
         inputFiles: [$0],
         outputFiles: [$1])
     }
-    let swiftPath: (Path) -> (Path) = {
-      context.pluginWorkDirectory.appending($0.suffix("swift").lastComponent)
+    let outputPath: (Path) -> (Path) = {
+      // Strip .gyb extension, keeping the underlying extension (e.g., .swift, .metal)
+      context.pluginWorkDirectory.appending($0.stem)
     }
     let gybFiles = target.sourceFiles(withSuffix: ".gyb")
-    return try gybFiles.map { ($0.path, swiftPath($0.path)) }.map(gyb)
+    return try gybFiles.map { ($0.path, outputPath($0.path)) }.map(gyb)
   }
 }
