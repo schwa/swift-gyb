@@ -55,6 +55,7 @@ struct GybBuildPlugin: BuildToolPlugin {
       Diagnostics.remark("ClangTarget \(target.name) sourceFiles: \(clangTarget.sourceFiles.map { $0.path.string })")
       gybFiles = clangTarget.sourceFiles.filter { $0.path.extension == "gyb" }
     } else {
+      Diagnostics.remark("Unknown target type for \(target.name): \(type(of: target))")
       return []
     }
     
